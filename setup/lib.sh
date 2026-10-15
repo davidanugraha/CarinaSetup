@@ -16,7 +16,10 @@ repo_root() {
 }
 
 linux_target() {
-    local machine
+    local kernel machine
+    kernel=$(uname -s)
+    [ "$kernel" = Linux ] || \
+        die "this bootstrap is for Carina Linux, but uname -s reports '$kernel' (are you still on CPI/Cygwin?)"
     machine=$(uname -m)
     case "$machine" in
         x86_64|amd64)

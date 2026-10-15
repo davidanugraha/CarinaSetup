@@ -9,7 +9,7 @@ ROOT=$(repo_root)
 source "$ROOT/VERSIONS.env"
 
 UV_BIN=${UV_BIN:-$HOME/.local/bin/uv}
-PYTHON_SOURCE=${PYTHON_SOURCE:-auto}
+PYTHON_SOURCE=${PYTHON_SOURCE:-offline}
 PYTHON_VERSION=${PYTHON_VERSION:-3.12}
 TARGET=$(linux_target)
 PYTHON_MIRROR="$ROOT/artifacts/python"
@@ -56,7 +56,7 @@ try_local_mirror() {
 
     verify_recorded_sha256 "$archive" "$ROOT/artifacts/SHA256SUMS"
     note "Trying bundled python-build-standalone mirror..."
-    "$UV_BIN" python install "$PYTHON_VERSION" \
+    UV_OFFLINE=1 "$UV_BIN" python install "$PYTHON_VERSION" \
         --mirror "file://$PYTHON_MIRROR" && return 0
 
     note "The archive does not match uv's pinned download manifest; unpacking it directly."
@@ -101,8 +101,8 @@ install_archive() {
 }
 
 case "$PYTHON_SOURCE" in
-    auto|network|system|bundled) ;;
-    *) die "PYTHON_SOURCE must be auto, network, system, or bundled" ;;
+    offline|auto|network|system|bundled) ;;
+    *) die "PYTHON_SOURCE must be offline, auto, network, system, or bundled" ;;
 esac
 
 if verify_uv_can_find_python; then
@@ -115,7 +115,7 @@ elif [ "$PYTHON_SOURCE" = auto ] || [ "$PYTHON_SOURCE" = network ]; then
     fi
 fi
 
-if ! verify_uv_can_find_python && { [ "$PYTHON_SOURCE" = auto ] || [ "$PYTHON_SOURCE" = system ]; }; then
+if ! verify_uv_can_find_python && { [ "$PYTHON_SOURCE" = offline ] || [ "$PYTHON_SOURCE" = auto ] || [ "$PYTHON_SOURCE" = system ]; }; then
     system_python=$(find_system_python || true)
     if [ -n "$system_python" ]; then
         note "Using system Python: $system_python"
@@ -124,7 +124,7 @@ if ! verify_uv_can_find_python && { [ "$PYTHON_SOURCE" = auto ] || [ "$PYTHON_SO
     fi
 fi
 
-if ! verify_uv_can_find_python && { [ "$PYTHON_SOURCE" = auto ] || [ "$PYTHON_SOURCE" = bundled ]; }; then
+if ! verify_uv_can_find_python && { [ "$PYTHON_SOURCE" = offline ] || [ "$PYTHON_SOURCE" = auto ] || [ "$PYTHON_SOURCE" = bundled ]; }; then
     try_local_mirror || die "no usable bundled Python archive for $TARGET"
 fi
 

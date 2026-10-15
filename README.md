@@ -14,9 +14,17 @@ git clone https://github.com/davidanugraha/CarinaSetup.git cs
 bash cs/check.sh
 ```
 
-The diagnostic is read-only. It reports architecture, glibc/`ldd`, short
-connectivity probes for GitHub and GitHub release assets, available Python
-commands, and whether `uv` already works.
+The diagnostic is read-only and offline-safe. It reports architecture,
+glibc/`ldd`, available Python commands, and whether `uv` already works. Network
+probes are skipped by default. To test GitHub and GitHub release assets on a
+machine where that is appropriate, explicitly run:
+
+```bash
+CHECK_NETWORK=1 bash cs/check.sh
+```
+
+Run these commands after logging into Carina itself, not in the CPI Windows
+Cygwin shell. `setup.sh` refuses to run unless `uname -s` is exactly `Linux`.
 
 ## Install
 
@@ -27,14 +35,18 @@ been approved by the Carina administrators:
 bash cs/setup.sh
 ```
 
+`setup.sh` is the only base-bootstrap entry point. The similarly named `setup/`
+directory contains its internal helper scripts; you do not run those directly.
+
 The setup script:
 
 1. Detects `x86_64` or `aarch64`.
 2. Installs a checksum-verified bundled `uv` binary to `~/.local/bin/uv`. If no
    bundled binary exists, it tries the pinned GitHub release asset.
 3. Adds `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` once.
-4. Tries `uv python install 3.12`, then a system Python 3.12 with downloads
-   disabled, then a bundled python-build-standalone archive.
+4. Uses an existing system Python 3.12 when available; otherwise, it runs `uv
+   python install 3.12` against the bundled local mirror. It does not attempt a
+   network connection by default.
 5. Verifies `uv --version` and that `uv` can find Python 3.12 without another
    download.
 
@@ -67,7 +79,11 @@ Force a source when troubleshooting:
 UV_SOURCE=bundled PYTHON_SOURCE=bundled bash cs/setup.sh
 UV_SOURCE=download PYTHON_SOURCE=network bash cs/setup.sh
 PYTHON_SOURCE=system bash cs/setup.sh
+PYTHON_SOURCE=auto bash cs/setup.sh
 ```
+
+`PYTHON_SOURCE=auto` restores the network-first behavior. The normal command,
+`bash cs/setup.sh`, is offline-safe.
 
 ## Policy boundary
 
@@ -76,14 +92,17 @@ approved standalone Python runtime. Never add credentials, tokens, data, Python
 packages, wheels, or source distributions. Package installation is deliberately
 not configured until an approved internal package index is known.
 
-## Optional local coding assistant
+## Optional Carina coding agent
 
-This is intentionally not installed by `setup.sh`. A useful offline assistant
-needs separate approval, a compatible GPU/CPU and memory allocation, and large
-model/runtime artifacts transferred through an approved route. OpenCode can use
-an OpenAI-compatible local server. Codex CLI may also support custom providers,
-but its exact installation and provider configuration should be pinned only
-after choosing the runtime and model. OpenAI's local `gpt-oss` options include
-20B and 120B models; those model weights are far larger than this bootstrap repo
-and must not be added here.
+The coding-agent work is separated by component under
+[`coding-agent/`](coding-agent/README.md):
+
+1. Base `uv` and Python bootstrap.
+2. Existing approved vLLM runtime plus the local `Qwen/Qwen3.8-27B` model.
+3. Existing approved Codex CLI configured to use vLLM.
+
+These scripts are run on Carina, not on the personal PC or CPI. The repository
+does not contain or download vLLM packages, Codex binaries, or model weights.
+After the three one-time setup tasks, run `carina-code` inside each GPU
+allocation.
 

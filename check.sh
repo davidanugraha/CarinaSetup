@@ -28,8 +28,13 @@ probe_url() {
 }
 
 section System
+kernel=$(uname -s)
 printf 'uname -m: %s\n' "$(uname -m)"
 printf 'uname -sr: %s\n' "$(uname -sr)"
+if [ "$kernel" != Linux ]; then
+    printf 'WARNING: this is %s, not Linux. Do not run setup.sh here.\n' "$kernel"
+    printf '%s\n' 'SSH to Carina first, then run this diagnostic there.'
+fi
 if command -v getconf >/dev/null 2>&1; then
     printf 'glibc: %s\n' "$(getconf GNU_LIBC_VERSION 2>/dev/null || printf 'not reported')"
 else
@@ -42,14 +47,18 @@ else
 fi
 
 section Network
-probe_url github.com https://github.com/
-probe_url release-assets \
-    "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-gnu.tar.gz.sha256"
-for proxy_name in HTTPS_PROXY https_proxy HTTP_PROXY http_proxy; do
-    if [ -n "${!proxy_name:-}" ]; then
-        printf '%s is set (value hidden)\n' "$proxy_name"
-    fi
-done
+if [ "${CHECK_NETWORK:-0}" = 1 ]; then
+    probe_url github.com https://github.com/
+    probe_url release-assets \
+        "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-gnu.tar.gz.sha256"
+    for proxy_name in HTTPS_PROXY https_proxy HTTP_PROXY http_proxy; do
+        if [ -n "${!proxy_name:-}" ]; then
+            printf '%s is set (value hidden)\n' "$proxy_name"
+        fi
+    done
+else
+    printf '%s\n' 'Skipped (offline-safe default). Set CHECK_NETWORK=1 to probe with timeouts.'
+fi
 
 section Python
 found=0
